@@ -8,10 +8,9 @@
 </head>
 <body class="bg-gray-50 font-sans min-h-screen flex flex-col justify-between">
 
-    <header class="bg-blue-700 text-white shadow-md py-5 px-6">
+    <header class="bg-emerald-800 text-white shadow-md py-5 px-6">
         <div class="max-w-5xl mx-auto flex justify-between items-center">
             <h1 class="text-2xl font-bold tracking-tight">🔬 Système de Prédiction du Risque Opérationnel</h1>
-            <span class="bg-blue-600 text-sm font-semibold px-3 py-1 rounded-full border border-blue-400">Statut: Connecté</span>
         </div>
     </header>
 
@@ -25,19 +24,19 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Mois d'Extraction (1-12)</label>
                         <input type="number" id="mois" name="mois" min="1" max="12" value="6" required
-                            class="w-full rounded-md border-gray-300 shadow-sm p-2.5 bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 border">
+                            class="w-full rounded-md border-gray-300 shadow-sm p-2.5 bg-gray-50 focus:ring-2 focus:ring-emerald-600 focus:border-emerald-600 border">
                     </div>
 
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Délai P1 (Réception -> Début Analyse en Jours)</label>
                         <input type="number" id="p1" name="p1" min="0" value="3" required
-                            class="w-full rounded-md border-gray-300 shadow-sm p-2.5 bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 border">
+                            class="w-full rounded-md border-gray-300 shadow-sm p-2.5 bg-gray-50 focus:ring-2 focus:ring-emerald-600 focus:border-emerald-600 border">
                     </div>
 
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Charge Mensuelle globale (Workload)</label>
                         <input type="number" id="workload" name="workload" min="1" value="150" required
-                            class="w-full rounded-md border-gray-300 shadow-sm p-2.5 bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 border">
+                            class="w-full rounded-md border-gray-300 shadow-sm p-2.5 bg-gray-50 focus:ring-2 focus:ring-emerald-600 focus:border-emerald-600 border">
                     </div>
                 </div>
 
@@ -45,18 +44,18 @@
                     <label class="block text-sm font-medium text-gray-800 mb-2">Sélection de l'Architecture Prédictive :</label>
                     <div class="flex space-x-6">
                         <label class="inline-flex items-center cursor-pointer">
-                            <input type="radio" name="model" value="rf" checked class="text-blue-600 focus:ring-blue-500 h-4 w-4">
+                            <input type="radio" name="model" value="rf" checked class="text-emerald-700 focus:ring-emerald-600 h-4 w-4">
                             <span class="ml-2 text-sm text-gray-700 font-medium">Random Forest Classifier (Recommandé)</span>
                         </label>
                         <label class="inline-flex items-center cursor-pointer">
-                            <input type="radio" name="model" value="svm" class="text-blue-600 focus:ring-blue-500 h-4 w-4">
+                            <input type="radio" name="model" value="svm" class="text-emerald-700 focus:ring-emerald-600 h-4 w-4">
                             <span class="ml-2 text-sm text-gray-700 font-medium">SVM (Optimisé RBF Calibré)</span>
                         </label>
                     </div>
                 </div>
 
                 <button type="submit"
-                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold p-3 rounded-lg shadow transition duration-200">
+                    class="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-semibold p-3 rounded-lg shadow transition duration-200">
                     Calculer l'Indice de Risque Opérationnel
                 </button>
             </form>
@@ -77,10 +76,10 @@
                     <div>
                         <div class="flex justify-between items-center mb-1">
                             <span class="text-sm font-semibold text-gray-600">Score de Confiance :</span>
-                            <span id="confidencePercentage" class="text-sm font-bold text-blue-700">0%</span>
+                            <span id="confidencePercentage" class="text-sm font-bold text-emerald-800">0%</span>
                         </div>
                         <div class="w-full bg-gray-200 rounded-full h-2.5">
-                            <div id="confidenceBar" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%"></div>
+                            <div id="confidenceBar" class="bg-emerald-700 h-2.5 rounded-full" style="width: 0%"></div>
                         </div>
                     </div>
 
@@ -95,7 +94,7 @@
         </div>
     </main>
 
-    <footer class="bg-gray-800 text-gray-400 text-center py-4 text-xs">
+    <footer class="bg-emerald-800 text-gray-400 text-center py-4 text-xs">
         &copy; 2026 Système d'Analyse Prédictive IA. Conforme aux protocoles académiques.
     </footer>
 
@@ -136,8 +135,8 @@
                     resultBlock.className = "bg-white rounded-xl shadow-lg p-6 md:p-8 border-t-4 border-green-500";
                     classCard.classList.add("bg-green-50", "border-green-200", "text-green-800");
                 } else if (resData.prediction_class === 1) { // Standard
-                    resultBlock.className = "bg-white rounded-xl shadow-lg p-6 md:p-8 border-t-4 border-blue-500";
-                    classCard.classList.add("bg-blue-50", "border-blue-200", "text-blue-800");
+                    resultBlock.className = "bg-white rounded-xl shadow-lg p-6 md:p-8 border-t-4 border-emerald-600";
+                    classCard.classList.add("bg-emerald-50", "border-emerald-200", "text-emerald-950");
                 } else { // Critique (Classe 2)
                     resultBlock.className = "bg-white rounded-xl shadow-lg p-6 md:p-8 border-t-4 border-red-500";
                     classCard.classList.add("bg-red-50", "border-red-200", "text-red-800");
