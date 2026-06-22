@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-
+import joblib
 from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score
 from sklearn.preprocessing import StandardScaler
 from sklearn.impute import SimpleImputer
@@ -13,9 +13,9 @@ from sklearn.metrics import classification_report, confusion_matrix, cohen_kappa
 # Sélection des modèles conformément aux exigences académiques
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import SVC
-# Importation requise à vérifier tout en haut du script ou à ajouter ici
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.model_selection import GridSearchCV
+
 # Configuration du style graphique pour le rapport d'analyse
 sns.set_theme(style="whitegrid")
 plt.rcParams['figure.figsize'] = [10, 6]
@@ -24,33 +24,24 @@ plt.rcParams['figure.figsize'] = [10, 6]
 # =====================================================================
 # 1. CHARGEMENT ET NETTOYAGE DES DONNÉES (Lecture Excel .xlsx)
 # =====================================================================
-
 def load_and_clean_data(filepath):
     print("[1/6] Chargement et nettoyage des données Excel en cours...")
-
-    # Lecture du fichier Excel en sautant les lignes d'en-tête inutiles (header=3)
     df = pd.read_excel(filepath, header=3, engine='openpyxl')
 
-    # Élimination des lignes et colonnes totalement vides
     df = df.dropna(how='all', axis=1)
     df = df.dropna(subset=['N° échantillon'])
 
-    # 🛡️ SÉCURISATION : Extraction du mois depuis la chaîne "N° échantillon"
-    # errors='coerce' transforme les textes parasites (ex: 'om') en NaN pour éviter le crash
     mois_slice = df['N° échantillon'].astype(str).str.slice(4, 6)
     df['Mois_Extraction'] = pd.to_numeric(mois_slice, errors='coerce')
 
-    # Suppression définitive des lignes textuelles/invalides (lignes de totaux, commentaires...)
     df = df.dropna(subset=['Mois_Extraction'])
     df['Mois_Extraction'] = df['Mois_Extraction'].astype(int)
 
-    # Conversion des colonnes temporelles au format standard Datetime
     date_cols = ['Date réception', 'Début analyse', 'Fin Analyse', 'Date jugement', 'Date édition du RA',
                  'Date Facture']
     for col in date_cols:
         df[col] = pd.to_datetime(df[col], errors='coerce')
 
-    # RÈGLE MÉTIER : Calcul des sous-délais opérationnels
     df['P1'] = (df['Début analyse'] - df['Date réception']).dt.days
     df['P2'] = (df['Date Facture'] - df['Date réception']).dt.days
     df['P3'] = (df['Fin Analyse'] - df['Début analyse']).dt.days
@@ -61,12 +52,10 @@ def load_and_clean_data(filepath):
     df['P8'] = (df['Date édition du RA'] - df['Fin Analyse']).dt.days
     df['DG'] = (df['Date édition du RA'] - df['Date réception']).dt.days
 
-    # Correction des valeurs négatives dues aux fautes de frappe
     delay_features = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8', 'DG']
     for feat in delay_features:
         df[feat] = df[feat].clip(lower=0)
 
-    # Feature Engineering : Calcul de la charge de travail mensuelle
     workload_map = df['Mois_Extraction'].value_counts().to_dict()
     df['Workload_Mensuel'] = df['Mois_Extraction'].map(workload_map)
 
@@ -76,7 +65,6 @@ def load_and_clean_data(filepath):
 # =====================================================================
 # 2. FORMULATION DU PROBLÈME IA
 # =====================================================================
-
 def operational_target_definition(df):
     print("[2/6] Définition des classes de risque opérationnel...")
 
@@ -91,7 +79,6 @@ def operational_target_definition(df):
             return 2
 
     df['Risque_Retard'] = df['DG'].apply(assign_class)
-
     df_ml = df.dropna(subset=['Risque_Retard', 'P1']).copy()
     df_ml['Risque_Retard'] = df_ml['Risque_Retard'].astype(int)
 
@@ -100,11 +87,9 @@ def operational_target_definition(df):
     return df_ml
 
 
-
 # =====================================================================
 # 3. PROTOCOLE EXPÉRIMENTAL ET PIPELINES DE MACHINE LEARNING
 # =====================================================================
-
 def run_experimental_pipeline(df_ml):
     print("[3/6] Configuration du protocole de validation et optimisation...")
 
@@ -116,21 +101,18 @@ def run_experimental_pipeline(df_ml):
         X, y, test_size=0.2, random_state=42, stratify=y
     )
 
-    # 1. Pipeline Random Forest (Reste inchangé car il fonctionne très bien)
     pipeline_rf = Pipeline([
         ('imputer', SimpleImputer(strategy='median')),
         ('scaler', StandardScaler()),
         ('classifier', RandomForestClassifier(n_estimators=150, max_depth=10, random_state=42, class_weight='balanced'))
     ])
 
-    # 2. Pipeline de recherche pour le SVM (On utilise RBF pour capter la non-linéarité)
     pipeline_svm_tuning = Pipeline([
         ('imputer', SimpleImputer(strategy='median')),
         ('scaler', StandardScaler()),
         ('classifier', SVC(kernel='rbf', class_weight='balanced', random_state=42))
     ])
 
-    # Grille d'exploration combinée pour forcer le SVM à chercher des frontières complexes
     param_grid = {
         'classifier__C': [1, 10, 100],
         'classifier__gamma': ['scale', 'auto', 0.1]
@@ -140,12 +122,10 @@ def run_experimental_pipeline(df_ml):
     grid_search_svm = GridSearchCV(pipeline_svm_tuning, param_grid, cv=5, scoring='f1_macro', n_jobs=-1)
     grid_search_svm.fit(X_train, y_train)
 
-    # Extraction des meilleurs réglages trouvés
     best_params = grid_search_svm.best_params_
     print(
         f"Meilleurs paramètres trouvés -> C: {best_params['classifier__C']}, Gamma: {best_params['classifier__gamma']}")
 
-    # 3. Création du SVM calibré final avec les bons paramètres (zéro warning, vraie confiance)
     optimized_svc = SVC(
         kernel='rbf',
         C=best_params['classifier__C'],
@@ -174,18 +154,16 @@ def run_experimental_pipeline(df_ml):
 
     return pipeline_rf, pipeline_svm, X_test, y_test
 
+
 # =====================================================================
 # 4. ÉVALUATION DES PERFORMANCES CLASSIQUES
 # =====================================================================
-
 def evaluate_models(model_rf, model_svm, X_test, y_test):
     print("[4/6] Évaluation des performances sur l'ensemble de Test...")
-
     target_names = ['Classe 0: Rapide', 'Classe 1: Standard', 'Classe 2: Critique']
 
     for name, model in [("Random Forest", model_rf), ("SVM (RBF)", model_svm)]:
         y_pred = model.predict(X_test)
-
         print(f"\n================ MÉTRIQUES DE PERFORMANCE : {name} ================")
         print(classification_report(y_test, y_pred, target_names=target_names))
 
@@ -205,10 +183,8 @@ def evaluate_models(model_rf, model_svm, X_test, y_test):
 # =====================================================================
 # 5. ANALYSE PROFONDE DE LA CONFIANCE DES PRÉDICTIONS
 # =====================================================================
-
 def perform_confidence_analysis(model, X_test, y_test, model_name):
     print(f"[5/6] Extraction et diagnostic des scores de confiance pour {model_name}...")
-
     probas = model.predict_proba(X_test)
     predictions = model.predict(X_test)
     confiances = np.max(probas, axis=1)
@@ -244,36 +220,29 @@ def perform_confidence_analysis(model, X_test, y_test, model_name):
 
 
 # =====================================================================
-# 6. EXÉCUTION DU SCRIPT (Chemins relatifs & Fichier Excel)
+# 6. EXÉCUTION DU SCRIPT & SÉRIALISATION DES MODÈLES DANS SRC/
 # =====================================================================
-
 if __name__ == "__main__":
-    # Localisation relative de votre dossier src/
     dossier_script = os.path.dirname(os.path.abspath(__file__))
-
-    # Chemin vers le fichier Excel officiel du projet
-    filename = os.path.abspath(os.path.join(
-        dossier_script,
-        "..",
-        "data",
-        "Suivi délais d'exécution des échantillons 2025.xlsx"
-    ))
+    filename = os.path.abspath(
+        os.path.join(dossier_script, "..", "data", "Suivi délais d'exécution des échantillons 2025.xlsx"))
 
     print(f"Recherche locale du fichier Excel dans le projet : {filename}")
 
     if not os.path.exists(filename):
         print("\n[ERREUR CRITIQUE] Le fichier Excel spécifié est introuvable.")
-        print(
-            "Vérifiez que le fichier 'Suivi délais d'exécution des échantillons 2025.xlsx' est bien placé dans le dossier 'data'.")
     else:
-        # Lancement de l'architecture d'IA
         df_cleaned = load_and_clean_data(filename)
         df_ml = operational_target_definition(df_cleaned)
         model_rf, model_svm, X_test, y_test = run_experimental_pipeline(df_ml)
 
         evaluate_models(model_rf, model_svm, X_test, y_test)
-
         df_confidence_rf = perform_confidence_analysis(model_rf, X_test, y_test, "Random Forest")
         df_confidence_svm = perform_confidence_analysis(model_svm, X_test, y_test, "SVM")
 
-        print("\n[6/6] Analyse terminée avec succès ! Le système est prêt.")
+        # 💾 EXPORTATION SÉCURISÉE DES PIPELINES EN FICHIERS CACHE
+        print("\n[6/6] Sérialisation et sauvegarde des modèles d'architecture IA...")
+        joblib.dump(model_rf, os.path.join(dossier_script, 'model_rf.pkl'))
+        joblib.dump(model_svm, os.path.join(dossier_script, 'model_svm.pkl'))
+
+        print("Fichiers 'model_rf.pkl' et 'model_svm.pkl' créés avec succès dans src/ !")
